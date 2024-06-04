@@ -2,29 +2,58 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
-func getDBConnection() *pgx.Conn {
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+var (
+	dbConn *pgxpool.Pool
+	dbName string = os.Getenv("DATABASE_NAME")
+)
+
+func InitializeDBPool(ctx context.Context) {
+	dbUrl := os.Getenv("DATABASE_URL")
+	dbpool, err := pgxpool.New(ctx, dbUrl)
 	if err != nil {
-		log.Error().Msg("could-not-connect-to-db")
+		log.Fatal().Err(err).Msg("could-not-connect-to-db")
 	}
-	return conn
+	dbConn = dbpool
+}
+
+func CloseDBPool() {
+	dbConn.Close()
 }
 
 func QueryUrlEntries(longUrl string) (result string, urlFound bool, err error) {
-	conn := getDBConnection()
-	defer conn.Close(context.Background())
-	var matchingLongUrl string
-	conn.QueryRow(context.Background(), "")
+	if dbConn != nil {
+		query := fmt.Sprintf("SELECT 'short' FROM %v;", dbName)
+		err = dbConn.QueryRow(context.Background(), query).Scan(&result)
+		if err != nil {
+			log.Err(err).Str("query", query).Msg("longUrl-query-failed")
+		}
+		if len(result) > 0 {
+			urlFound = true
+		}
+	} else {
+		log.Error().Msg("queryUrlEntries-dbConn-not-initialized")
+	}
+
+	return result, urlFound, err
 }
 
-func WriteUrlEntry(uuid string, shortUrl string, longUrl string) (id string, err error) {}
+func WriteUrlEntry(uuid string, shortUrl string, longUrl string) (err error) {
+	if dbConn != nil {
+		query := fmt.Sprintf("INSERT INTO %v (id, short, long) VALUES ('%v', '%v', '%v')", dbName, uuid, shortUrl, longUrl)
+		_, err = dbConn.Exec(context.Background(), query)
+		if err != nil {
+			log.Err(err).Str("query", query).Msg("writeUrl-query-failed")
+		}
+	} else {
+		log.Error().Msg("writeUrlEntry-dbConn-not-initialized")
+	}
 
-func ReadDb(query string) (result []string, err error) {}
-
-func WriteDb() (id string, err error) {}
+	return err
+}
