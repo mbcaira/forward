@@ -11,7 +11,7 @@ import (
 
 var (
 	dbConn *pgxpool.Pool
-	dbName string = os.Getenv("DATABASE_NAME")
+	dbName string
 )
 
 func InitializeDBPool(ctx context.Context) {
@@ -21,6 +21,7 @@ func InitializeDBPool(ctx context.Context) {
 		log.Fatal().Err(err).Msg("could-not-connect-to-db")
 	}
 	dbConn = dbpool
+	dbName = os.Getenv("DATABASE_NAME")
 }
 
 func CloseDBPool() {
@@ -32,7 +33,7 @@ func QueryUrlEntries(shortUrl string) (result string, urlFound bool, err error) 
 		query := fmt.Sprintf("SELECT longUrl FROM %v WHERE shortUrl = '%v';", dbName, shortUrl)
 		err = dbConn.QueryRow(context.Background(), query).Scan(&result)
 		if err != nil {
-			log.Err(err).Str("query", query).Msg("queryUrl-query-failed")
+			log.Info().AnErr("queryError", err).Str("query", query).Msg("queryUrl-query-failed")
 		}
 		if len(result) > 0 {
 			urlFound = true

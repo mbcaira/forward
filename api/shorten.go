@@ -19,10 +19,12 @@ func Shorten(c *gin.Context) {
 		return
 	}
 
-	res, _, err := db.QueryUrlEntries(body.LongUrl)
+	res, urlFound, err := db.QueryUrlEntries(body.LongUrl)
 
 	if err != nil {
-		log.Err(err).Msg("oops")
+		c.Status(404)
+	} else if urlFound {
+		c.Status(203)
 	}
 
 	log.Info().Str("longUrl", body.LongUrl).Str("res", res).Msg("received")
