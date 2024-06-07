@@ -27,12 +27,12 @@ func CloseDBPool() {
 	dbConn.Close()
 }
 
-func QueryUrlEntries(longUrl string) (result string, urlFound bool, err error) {
+func QueryUrlEntries(shortUrl string) (result string, urlFound bool, err error) {
 	if dbConn != nil {
-		query := fmt.Sprintf("SELECT 'short' FROM %v;", dbName)
+		query := fmt.Sprintf("SELECT longUrl FROM %v WHERE shortUrl = '%v';", dbName, shortUrl)
 		err = dbConn.QueryRow(context.Background(), query).Scan(&result)
 		if err != nil {
-			log.Err(err).Str("query", query).Msg("longUrl-query-failed")
+			log.Err(err).Str("query", query).Msg("queryUrl-query-failed")
 		}
 		if len(result) > 0 {
 			urlFound = true
